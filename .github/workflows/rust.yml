@@ -108,8 +108,12 @@ jobs:
     name: Build for Linux (GNU)
     needs: get_version
     env:
-      target: x86_64-unknown-linux-gnu
       BUILD_VERSION: ${{ needs.get_version.outputs.version }}
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -121,26 +125,30 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           override: true
           default: true
-          target: ${{ env.target }}
+          target: ${{ matrix.target }}
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y libpam-dev
+        run: sudo apt-get update && sudo apt-get install -y libpam-dev && cargo install cross
       - name: Build for Linux (GNU)
-        run: cargo build --no-default-features --features gnu --release --target=${{ env.target }}
+        run: cross run --no-default-features --features gnu --release --target=${{ matrix.target }}
       - name: Rename
-        run: mv target/${{ env.target }}/release/unftp target/${{ env.target }}/release/unftp_${{ env.target }}
+        run: mv target/${{ matrix.target }}/release/unftp target/${{ matrix.target }}/release/unftp_${{ matrix.target }}
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: unftp_${{ env.target }}
-          path: target/${{ env.target }}/release/unftp_${{ env.target }}
+          name: unftp_${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/unftp_${{ matrix.target }}
 
   build-linux-musl:
     runs-on: ubuntu-latest
     name: Build for Linux (MUSL)
     needs: get_version
     env:
-      target: x86_64-unknown-linux-musl
       BUILD_VERSION: ${{ needs.get_version.outputs.version }}
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -152,13 +160,13 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           override: true
           default: true
-          target: ${{ env.target }}
+          target: ${{ matrix.target }}
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools && cargo install cross
       - name: Build for Linux (MUSL)
-        run: RUSTFLAGS="-C target-feature=+crt-static" cargo build --no-default-features --features docker --release --target=${{ env.target }}
+        run: RUSTFLAGS="-C target-feature=+crt-static" cross run --no-default-features --features docker --release --target=${{ env.target }}
       - name: Rename
-        run: mv target/${{ env.target }}/release/unftp target/${{ env.target }}/release/unftp_${{ env.target }}
+        run: mv target/${{ matrix.target }}/release/unftp target/${{ matrix.target }}/release/unftp_${{ env.target }}
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
